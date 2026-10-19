@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#151522">
+<title>MP4 音声差し替えツール</title>
+<style>
+:root{color-scheme:dark;--bg:#101018;--panel:#191926;--panel2:#222235;--text:#f5f4ff;--muted:#b9b8ce;--accent:#a78bfa;--accent2:#7c3aed;--border:#38374d;--ok:#86efac;--bad:#fca5a5}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#25203d 0,#101018 55%);color:var(--text);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
+main{width:min(820px,calc(100% - 28px));margin:42px auto 60px}.hero{text-align:center;margin-bottom:26px}.logo{width:64px;height:64px;border-radius:20px;background:linear-gradient(135deg,#a78bfa,#6d28d9);display:grid;place-items:center;margin:0 auto 14px;font-size:30px;box-shadow:0 10px 35px #7c3aed44}
+h1{font-size:clamp(25px,5vw,36px);line-height:1.2;margin:0 0 10px;letter-spacing:-.03em}.hero p{color:var(--muted);margin:0}
+.card{background:#191926ee;border:1px solid var(--border);border-radius:22px;padding:22px;margin:16px 0;box-shadow:0 12px 36px #0002}
+.card h2{font-size:18px;margin:0 0 5px}.sub{color:var(--muted);font-size:14px;margin:0 0 15px}
+.uploads{display:grid;grid-template-columns:1fr 1fr;gap:14px}.upload{display:block;border:1px dashed #686581;border-radius:16px;padding:18px 15px;background:#ffffff04;min-width:0}.upload:hover{border-color:var(--accent);background:#a78bfa0b}.upload .symbol{font-size:26px}.upload strong{display:block;margin:5px 0}.upload small{display:block;color:var(--muted);overflow-wrap:anywhere}.upload input{display:block;width:100%;margin-top:12px;font:inherit;font-size:14px;color:var(--muted)}input::file-selector-button{background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;color:var(--text);margin-right:8px;cursor:pointer}
+.file-name{margin-top:10px;font-size:13px;color:var(--ok);overflow-wrap:anywhere}.btn{width:100%;border:0;border-radius:13px;padding:14px 18px;font:inherit;font-weight:750;background:linear-gradient(100deg,#a78bfa,#7c3aed);color:white;cursor:pointer;margin-top:18px;box-shadow:0 8px 20px #7c3aed25}.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}.secondary{background:var(--panel2);box-shadow:none;border:1px solid var(--border);margin-top:10px}
+.status{border-radius:12px;padding:12px 14px;background:#ffffff08;color:var(--muted);font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}.status.good{color:var(--ok)}.status.error{color:var(--bad)}.progress-wrap{height:8px;background:#ffffff12;border-radius:99px;overflow:hidden;margin:12px 0}.progress{height:100%;width:0;background:linear-gradient(90deg,#a78bfa,#7c3aed);transition:width .2s}
+.output{display:none}.output.show{display:block}.note{font-size:13px;color:var(--muted)}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}.step{background:#ffffff06;border:1px solid #ffffff0d;border-radius:12px;padding:12px;text-align:center;font-size:13px;color:var(--muted)}.step b{display:block;color:var(--text);font-size:15px}.privacy{display:flex;gap:10px;align-items:flex-start}.privacy span{color:var(--ok);font-size:19px}
+a{color:#c4b5fd}footer{text-align:center;color:var(--muted);font-size:12px;margin-top:26px}
+@media(max-width:600px){main{margin-top:24px}.card{padding:17px;border-radius:18px}.uploads{grid-template-columns:1fr}.steps{grid-template-columns:1fr}.upload{padding:15px}}
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <div class="logo" aria-hidden="true">🎬</div>
+    <h1>MP4 音声差し替えツール</h1>
+    <p>映像はそのまま、音声だけをアップロードしたMP3に交換。</p>
+  </header>
+
+  <section class="card">
+    <h2>ファイルを選択</h2>
+    <p class="sub">MP4動画と、差し替えたいMP3音声をそれぞれ選んでね。</p>
+    <div class="uploads">
+      <label class="upload">
+        <span class="symbol" aria-hidden="true">📹</span>
+        <strong>① 元の動画（MP4）</strong>
+        <small>映像を残したい動画ファイル</small>
+        <input id="videoFile" type="file" accept=".mp4,video/mp4" />
+        <div id="videoName" class="file-name">ファイル未選択</div>
+      </label>
+      <label class="upload">
+        <span class="symbol" aria-hidden="true">🎵</span>
+        <strong>② 差し替える音声（MP3）</strong>
+        <small>新しく入れたい音声ファイル</small>
+        <input id="audioFile" type="file" accept=".mp3,audio/mpeg,audio/mp3" />
+        <div id="audioName" class="file-name">ファイル未選択</div>
+      </label>
+    </div>
+    <button id="convertBtn" class="btn" disabled>音声を差し替える</button>
+    <p class="note">処理中はタブを閉じないでね。初回は変換エンジンの読み込みに時間がかかることがあります。</p>
+  </section>
+
+  <section class="card">
+    <h2>変換状況</h2>
+    <div id="status" class="status" role="status" aria-live="polite">MP4とMP3を選択すると変換できます。</div>
+    <div class="progress-wrap" aria-label="進捗"><div id="progress" class="progress"></div></div>
+    <div class="privacy"><span aria-hidden="true">🔒</span><div><strong>ブラウザ内で処理</strong><div class="note">選んだ動画・音声ファイルは変換のために外部サーバーへアップロードしません。変換エンジン自体はCDNから読み込みます。</div></div></div>
+  </section>
+
+  <section id="outputCard" class="card output">
+    <h2>変換完了！</h2>
+    <p class="sub">音声を差し替えたMP4を保存できます。</p>
+    <div id="outputInfo" class="status good"></div>
+    <a id="downloadLink" class="btn" style="display:block;text-align:center;text-decoration:none" download="audio_replaced.mp4">MP4をダウンロード</a>
+    <button id="resetBtn" class="btn secondary">別のファイルを変換する</button>
+  </section>
+
+  <div class="steps">
+    <div class="step"><b>1. MP4を選択</b>元の映像を読み込む</div>
+    <div class="step"><b>2. MP3を選択</b>新しい音声を指定</div>
+    <div class="step"><b>3. MP4で保存</b>音声差し替え完了</div>
+  </div>
+  <footer>MP4 Audio Replacer · GitHub Pages対応</footer>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+<script>
+(() => {
+  const videoInput = document.getElementById('videoFile');
+  const audioInput = document.getElementById('audioFile');
+  const convertBtn = document.getElementById('convertBtn');
+  const statusBox = document.getElementById('status');
+  const progressBar = document.getElementById('progress');
+  const outputCard = document.getElementById('outputCard');
+  const downloadLink = document.getElementById('downloadLink');
+  const outputInfo = document.getElementById('outputInfo');
+  const videoName = document.getElementById('videoName');
+  const audioName = document.getElementById('audioName');
+  const resetBtn = document.getElementById('resetBtn');
+  let ffmpeg = null;
+  let busy = false;
+  let outputUrl = null;
+
+  const formatSize = bytes => {
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+  function setStatus(message, type = '') {
+    statusBox.textContent = message;
+    statusBox.className = 'status' + (type ? ' ' + type : '');
+  }
+  function updateReady() {
+    videoName.textContent = videoInput.files[0]
+      ? `${videoInput.files[0].name} · ${formatSize(videoInput.files[0].size)}`
+      : 'ファイル未選択';
+    audioName.textContent = audioInput.files[0]
+      ? `${audioInput.files[0].name} · ${formatSize(audioInput.files[0].size)}`
+      : 'ファイル未選択';
+    convertBtn.disabled = busy || !videoInput.files[0] || !audioInput.files[0];
+  }
+  videoInput.addEventListener('change', updateReady);
+  audioInput.addEventListener('change', updateReady);
+
+  async function loadEngine() {
+    if (ffmpeg && ffmpeg.isLoaded()) return;
+    if (!window.FFmpeg || !window.FFmpeg.createFFmpeg) {
+      throw new Error('変換エンジンを読み込めませんでした。ページを再読み込みして試してください。');
+    }
+    setStatus('変換エンジンを読み込み中… 初回は少し時間がかかります。');
+    ffmpeg = window.FFmpeg.createFFmpeg({
+      log: false,
+      corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
+      progress: ({ ratio }) => {
+        if (busy && Number.isFinite(ratio)) {
+          const pct = Math.max(0, Math.min(99, Math.round(ratio * 100)));
+          progressBar.style.width = pct + '%';
+          setStatus(`変換中… ${pct}%`);
+        }
+      },
+      logger: ({ message }) => {
+        // ログは画面に大量表示せず、必要なエラーだけ例外として扱います。
+      }
+    });
+    await ffmpeg.load();
+  }
+
+  convertBtn.addEventListener('click', async () => {
+    const video = videoInput.files[0];
+    const audio = audioInput.files[0];
+    if (!video || !audio || busy) return;
+    if (!/\.mp4$/i.test(video.name) && video.type !== 'video/mp4') {
+      setStatus('MP4動画を選択してください。', 'error'); return;
+    }
+    if (!/\.mp3$/i.test(audio.name) && !['audio/mpeg','audio/mp3'].includes(audio.type)) {
+      setStatus('MP3音声を選択してください。', 'error'); return;
+    }
+
+    busy = true;
+    updateReady();
+    outputCard.classList.remove('show');
+    progressBar.style.width = '0%';
+    if (outputUrl) { URL.revokeObjectURL(outputUrl); outputUrl = null; }
+    let videoExt = 'input_video.mp4';
+    let audioExt = 'replacement_audio.mp3';
+    try {
+      await loadEngine();
+      setStatus('ファイルを準備中…');
+      progressBar.style.width = '5%';
+      ffmpeg.FS('writeFile', videoExt, await window.FFmpeg.fetchFile(video));
+      ffmpeg.FS('writeFile', audioExt, await window.FFmpeg.fetchFile(audio));
+      setStatus('映像をコピーし、MP3音声を組み合わせています…');
+      progressBar.style.width = '10%';
+      // -shortest: MP4とMP3のうち短い方の長さで出力を終了します。
+      // 映像は再エンコードせずコピーし、音声もMP3のまま格納します。
+      await ffmpeg.run(
+        '-i', videoExt,
+        '-i', audioExt,
+        '-map', '0:v:0',
+        '-map', '1:a:0',
+        '-c:v', 'copy',
+        '-c:a', 'copy',
+        '-shortest',
+        '-movflags', '+faststart',
+        'output_replaced.mp4'
+      );
+      const data = ffmpeg.FS('readFile', 'output_replaced.mp4');
+      const blob = new Blob([data.buffer], { type: 'video/mp4' });
+      outputUrl = URL.createObjectURL(blob);
+      downloadLink.href = outputUrl;
+      const baseName = video.name.replace(/\.mp4$/i, '') || 'video';
+      downloadLink.download = `${baseName}_audio_replaced.mp4`;
+      outputInfo.textContent = `出力サイズ：${formatSize(blob.size)} ／ ファイル形式：MP4`;
+      outputCard.classList.add('show');
+      progressBar.style.width = '100%';
+      setStatus('変換が完了しました！下のボタンからMP4を保存できます。', 'good');
+      try {
+        ffmpeg.FS('unlink', videoExt);
+        ffmpeg.FS('unlink', audioExt);
+        ffmpeg.FS('unlink', 'output_replaced.mp4');
+      } catch (_) {}
+    } catch (err) {
+      console.error(err);
+      const msg = err && err.message ? err.message : String(err);
+      setStatus('変換に失敗しました。\n' + msg + '\n\nファイル形式やサイズを確認し、ページを再読み込みして再試行してください。', 'error');
+      progressBar.style.width = '0%';
+    } finally {
+      busy = false;
+      updateReady();
+    }
+  });
+
+  resetBtn.addEventListener('click', () => {
+    if (outputUrl) { URL.revokeObjectURL(outputUrl); outputUrl = null; }
+    videoInput.value = '';
+    audioInput.value = '';
+    outputCard.classList.remove('show');
+    progressBar.style.width = '0%';
+    setStatus('MP4とMP3を選択すると変換できます。');
+    updateReady();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  window.addEventListener('beforeunload', () => {
+    if (outputUrl) URL.revokeObjectURL(outputUrl);
+  });
+})();
+</script>
+</body>
+</html>
